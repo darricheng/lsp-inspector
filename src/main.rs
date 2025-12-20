@@ -1,5 +1,5 @@
-use log::{error, info};
-use simplelog::*;
+use log::{Level, LevelFilter, error, log};
+use simplelog::{CombinedLogger, Config, WriteLogger};
 use std::env;
 use std::error::Error;
 use std::fs::File;
@@ -7,9 +7,23 @@ use std::process::Stdio;
 use tokio::io::{self, AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 
+#[derive(Debug)]
+enum StdIoEnum {
+    Stdin,
+    Stdout,
+    // Stderr,
+}
+
+fn custom_logger(stdio_type: StdIoEnum) -> impl Fn(&str, Level) {
+    move |message: &str, level: Level| {
+        log!(level, "-- {:?} -- {}", stdio_type, message);
+    }
+}
+
 async fn extract_message(
     source: impl AsyncRead + std::marker::Unpin,
     mut target: impl AsyncWriteExt + std::marker::Unpin,
+    logger: impl Fn(&str, Level),
 ) {
     let mut buf_reader = BufReader::new(source);
     loop {
@@ -27,11 +41,13 @@ async fn extract_message(
         bytes_for_server.extend_from_slice(content_length_header_str.as_bytes());
 
         // Extract the content length from the header
-        info!("{}", content_length_header_str);
         let mut split = content_length_header_str.trim().split(' ');
         split.next(); // Don't need the header name
         let content_length = split.next().unwrap().parse::<usize>().unwrap();
-        info!("Extracted Content-Length: {}", content_length);
+        logger(
+            &format!("Extracted Content-Length: {}", content_length),
+            Level::Info,
+        );
 
         // Read the next two \r\n bytes
         let mut line_break = String::new();
@@ -46,7 +62,7 @@ async fn extract_message(
         bytes_for_server.extend_from_slice(&message_buf);
 
         let message = String::from_utf8(message_buf).unwrap();
-        info!("Extracted message: {}", message);
+        logger(&format!("Extracted message: {}", message), Level::Info);
         // TODO: do something with message
 
         // Write to child stdin
@@ -87,14 +103,22 @@ fn main() {
         let child_stdin = child.stdin.take().unwrap();
         let child_stdout = child.stdout.take().unwrap();
 
-        let stdin_task = tokio::spawn(extract_message(io::stdin(), child_stdin));
-        let stdout_task = tokio::spawn(extract_message(child_stdout, io::stdout()));
+        let stdin_task = tokio::spawn(extract_message(
+            io::stdin(),
+            child_stdin,
+            custom_logger(StdIoEnum::Stdin),
+        ));
+        let stdout_task = tokio::spawn(extract_message(
+            child_stdout,
+            io::stdout(),
+            custom_logger(StdIoEnum::Stdout),
+        ));
 
         let status = child
             .wait()
             .await
             .expect("Child process encountered an error");
-        info!("Child process exited with status: {}", status);
+        log!(Level::Info, "Child process exited with status: {}", status);
 
         let _ = stdin_task.await;
         let _ = stdout_task.await;
