@@ -94,7 +94,7 @@ fn main() {
             .wait()
             .await
             .expect("Child process encountered an error");
-        println!("Child process exited with status: {}", status);
+        info!("Child process exited with status: {}", status);
 
         let _ = stdin_task.await;
         let _ = stdout_task.await;
