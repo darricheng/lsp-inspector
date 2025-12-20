@@ -65,9 +65,9 @@ async fn extract_message(
         logger(&format!("Extracted message: {}", message), Level::Info);
         // TODO: do something with message
 
-        // Write to child stdin
+        // Write to target output
         if target.write_all(&bytes_for_server).await.is_err() {
-            break; // Child stdin likely closed
+            break; // output likely closed
         }
         if target.flush().await.is_err() {
             break;
