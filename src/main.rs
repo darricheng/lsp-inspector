@@ -92,7 +92,7 @@ fn main() {
         .unwrap();
 
     let result: Result<(), Box<dyn Error>> = rt.block_on(async {
-        // Configure the child process's stdin to inherit from the parent.
+        // TODO: make it possible to pass in the lsp command
         let mut child = Command::new("biome")
             .arg("lsp-proxy")
             .stdin(Stdio::piped())
