@@ -1,9 +1,24 @@
+use log::info;
+use simplelog::*;
+use std::env;
+use std::fs::File;
 use std::process::Stdio;
 use tokio::io::{self, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
+    let current_dir = env::current_dir()?;
+    let log_file_path = current_dir.join("lsp-inspector-debug.log");
+    let log_file = File::create(log_file_path)?;
+
+    CombinedLogger::init(vec![WriteLogger::new(
+        LevelFilter::Info,
+        Config::default(),
+        log_file,
+    )])
+    .unwrap();
+
     // Configure the child process's stdin to inherit from the parent.
     let mut child = Command::new("biome")
         .arg("lsp-proxy")
@@ -13,7 +28,7 @@ async fn main() -> io::Result<()> {
         .spawn()?;
 
     let mut child_stdin = child.stdin.take().unwrap();
-    let mut child_stdout = child.stdout.take().unwrap();
+    let child_stdout = child.stdout.take().unwrap();
 
     let stdin_task = tokio::spawn(async move {
         let mut parent_stdin = io::stdin();
@@ -28,6 +43,14 @@ async fn main() -> io::Result<()> {
                     break;
                 }
             };
+
+            let mut copied = vec![0; n];
+            info!("after init copied");
+            copied.copy_from_slice(&buffer);
+            info!("copied into buffer");
+            let copied_str = String::from_utf8(copied).unwrap();
+            info!("copied_str: {}", copied_str);
+
             // Write to child stdin
             if child_stdin.write_all(&buffer[..n]).await.is_err() {
                 break; // Child stdin likely closed
