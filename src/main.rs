@@ -4,8 +4,60 @@ use std::env;
 use std::error::Error;
 use std::fs::File;
 use std::process::Stdio;
-use tokio::io::{self, AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{self, AsyncBufReadExt, AsyncRead, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::Command;
+
+async fn extract_message(
+    source: impl AsyncRead + std::marker::Unpin,
+    mut target: impl AsyncWriteExt + std::marker::Unpin,
+) {
+    let mut buf_reader = BufReader::new(source);
+    loop {
+        // Buffer for passing content to the server
+        // Every time we read from the buffer, we need to add to this slice,
+        // so that we don't lose info for the server.
+        let mut bytes_for_server: Vec<u8> = Vec::new();
+
+        let mut content_length_header_str = String::new();
+        buf_reader
+            .read_line(&mut content_length_header_str)
+            .await
+            .unwrap();
+
+        bytes_for_server.extend_from_slice(content_length_header_str.as_bytes());
+
+        // Extract the content length from the header
+        info!("{}", content_length_header_str);
+        let mut split = content_length_header_str.trim().split(' ');
+        split.next(); // Don't need the header name
+        let content_length = split.next().unwrap().parse::<usize>().unwrap();
+        info!("Extracted Content-Length: {}", content_length);
+
+        // Read the next two \r\n bytes
+        let mut line_break = String::new();
+        buf_reader.read_line(&mut line_break).await.unwrap();
+
+        bytes_for_server.extend_from_slice(line_break.as_bytes());
+
+        // Read the actual content
+        let mut message_buf = vec![0; content_length];
+        buf_reader.read_exact(&mut message_buf).await.unwrap();
+
+        bytes_for_server.extend_from_slice(&message_buf);
+
+        let message = String::from_utf8(message_buf).unwrap();
+        info!("Extracted message: {}", message);
+        // TODO: do something with message
+
+        // Write to child stdin
+        if target.write_all(&bytes_for_server).await.is_err() {
+            break; // Child stdin likely closed
+        }
+        if target.flush().await.is_err() {
+            break;
+        }
+    }
+}
 
 fn main() {
     let current_dir = env::current_dir().unwrap();
@@ -32,58 +84,10 @@ fn main() {
             .stderr(Stdio::inherit())
             .spawn()?;
 
-        let mut child_stdin = child.stdin.take().unwrap();
+        let child_stdin = child.stdin.take().unwrap();
         let child_stdout = child.stdout.take().unwrap();
 
-        let stdin_task = tokio::spawn(async move {
-            let parent_stdin = io::stdin();
-            let mut buf_reader = BufReader::new(parent_stdin);
-            loop {
-                // Buffer for passing content to the server
-                // Every time we read from the buffer, we need to add to this slice,
-                // so that we don't lose info for the server.
-                let mut bytes_for_server: Vec<u8> = Vec::new();
-
-                let mut content_length_header_str = String::new();
-                buf_reader
-                    .read_line(&mut content_length_header_str)
-                    .await
-                    .unwrap();
-
-                bytes_for_server.extend_from_slice(content_length_header_str.as_bytes());
-
-                // Extract the content length from the header
-                info!("{}", content_length_header_str);
-                let mut split = content_length_header_str.trim().split(' ');
-                split.next(); // Don't need the header name
-                let content_length = split.next().unwrap().parse::<usize>().unwrap();
-                info!("Extracted Content-Length: {}", content_length);
-
-                // Read the next two \r\n bytes
-                let mut line_break = String::new();
-                buf_reader.read_line(&mut line_break).await.unwrap();
-
-                bytes_for_server.extend_from_slice(line_break.as_bytes());
-
-                // Read the actual content
-                let mut message_buf = vec![0; content_length];
-                buf_reader.read_exact(&mut message_buf).await.unwrap();
-
-                bytes_for_server.extend_from_slice(&message_buf);
-
-                let message = String::from_utf8(message_buf).unwrap();
-                info!("Extracted message: {}", message);
-                // TODO: do something with message
-
-                // Write to child stdin
-                if child_stdin.write_all(&bytes_for_server).await.is_err() {
-                    break; // Child stdin likely closed
-                }
-                if child_stdin.flush().await.is_err() {
-                    break;
-                }
-            }
-        });
+        let stdin_task = tokio::spawn(extract_message(io::stdin(), child_stdin));
 
         let stdout_task = tokio::spawn(async move {
             let mut parent_stdout = io::stdout();
