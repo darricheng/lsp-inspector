@@ -1,6 +1,6 @@
 vim.lsp.config["biome"] = {
 	-- Command and arguments to start the server.
-	cmd = { "/Users/darricheng/code/lsp-inspector/target/debug/lsp-inspector" },
+	cmd = { "../target/debug/lsp-inspector" },
 	-- Filetypes to automatically attach to.
 	filetypes = { "typescript", "typescript.tsx", "typescriptreact" },
 	-- Sets the "workspace" to the directory where any of these files is found.
