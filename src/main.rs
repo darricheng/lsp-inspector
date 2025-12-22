@@ -1,5 +1,6 @@
+use iced::Length::Fill;
 use iced::task::{Sipper, sipper};
-use iced::widget::button;
+use iced::widget::{column, row, scrollable, text};
 use iced::{self, Element, Subscription};
 use log::{Level, LevelFilter, error, info, log};
 use simplelog::{CombinedLogger, Config, WriteLogger};
@@ -127,7 +128,7 @@ fn lsp_listener() -> impl Sipper<(), LspMessage> {
             info!("Starting to receive messages");
             while let Some(message) = receiver.recv().await {
                 info!("Received message: {:?}", message);
-                let _ = output.send(message);
+                let _ = output.send(message).await;
             }
         });
 
@@ -147,31 +148,56 @@ fn lsp_listener() -> impl Sipper<(), LspMessage> {
 #[derive(Debug, Clone)]
 enum Message {
     MessageReceived(LspMessage),
-    ButtonPressed,
 }
 
-struct LspInspector;
+struct LspInspector {
+    client_messages: Vec<String>,
+    server_messages: Vec<String>,
+}
 
 impl LspInspector {
     fn new() -> Self {
-        Self
+        Self {
+            client_messages: vec![String::from("Client Messages")],
+            server_messages: vec![String::from("Server Messages")],
+        }
     }
 
     fn update(&mut self, message: Message) {
+        info!("Update received: {:?}", message);
         match message {
-            Message::ButtonPressed => info!("Button Pressed"),
-            Message::MessageReceived(source) => {
-                info!("Message received in Iced: {:?}", source);
+            Message::MessageReceived(message) => {
+                info!("Message received in Iced: {:?}", message);
+                match message {
+                    LspMessage::Client(c) => self.client_messages.push(c),
+                    LspMessage::Server(s) => self.server_messages.push(s),
+                }
             }
         }
     }
 
     fn view(&self) -> Element<'_, Message> {
-        button("Press me!").on_press(Message::ButtonPressed).into()
+        let client_messages: Element<_> = scrollable(
+            column(self.client_messages.iter().map(text).map(Element::from)).spacing(10),
+        )
+        .height(Fill)
+        .spacing(10)
+        .into();
+        let server_messages: Element<_> = scrollable(
+            column(self.server_messages.iter().map(text).map(Element::from)).spacing(10),
+        )
+        .height(Fill)
+        .spacing(10)
+        .into();
+
+        row![client_messages, server_messages].into()
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        Subscription::run(lsp_listener).map(Message::MessageReceived)
+        Subscription::run(lsp_listener).map(|msg| {
+            info!("In subscription map");
+            Message::MessageReceived(msg)
+        })
     }
 }
 
