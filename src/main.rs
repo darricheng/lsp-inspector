@@ -1,6 +1,6 @@
 use iced::Length::Fill;
 use iced::task::{Sipper, sipper};
-use iced::widget::{column, row, scrollable, text};
+use iced::widget::{column, scrollable, text};
 use iced::{self, Element, Subscription};
 use log::{Level, LevelFilter, error, info, log};
 use simplelog::{CombinedLogger, Config, WriteLogger};
@@ -190,7 +190,7 @@ impl LspInspector {
         .spacing(10)
         .into();
 
-        row![client_messages, server_messages].into()
+        column![client_messages, server_messages].into()
     }
 
     fn subscription(&self) -> Subscription<Message> {
