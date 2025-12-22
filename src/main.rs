@@ -1,7 +1,7 @@
 use iced::Length::Fill;
 use iced::task::{Sipper, sipper};
-use iced::widget::{column, scrollable, text};
-use iced::{self, Element, Subscription};
+use iced::widget::{column, container, scrollable, text};
+use iced::{self, Color, Element, Subscription};
 use log::{Level, LevelFilter, error, info, log};
 use simplelog::{CombinedLogger, Config, WriteLogger};
 use std::env;
@@ -177,11 +177,14 @@ impl LspInspector {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let client_messages: Element<_> = scrollable(
-            column(self.client_messages.iter().map(text).map(Element::from)).spacing(10),
+        let client_messages: Element<_> = container(
+            scrollable(
+                column(self.client_messages.iter().map(text).map(Element::from)).spacing(10),
+            )
+            .height(Fill)
+            .spacing(10),
         )
-        .height(Fill)
-        .spacing(10)
+        .style(|_theme| container::Style::default().background(Color::BLACK.scale_alpha(0.8)))
         .into();
         let server_messages: Element<_> = scrollable(
             column(self.server_messages.iter().map(text).map(Element::from)).spacing(10),
