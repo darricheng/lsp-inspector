@@ -90,18 +90,27 @@ async fn extract_message(
     }
 }
 
-pub fn lsp_listener() -> impl Sipper<(), LspMessage> {
-    sipper(async |mut output| {
+pub fn lsp_listener(lsp_command: String) -> impl Sipper<(), LspMessage> {
+    sipper(async move |mut output| {
         let (sender, mut receiver) = mpsc::channel::<LspMessage>(16);
 
-        // TODO: make it possible to pass in the lsp command
-        let mut child = Command::new("biome")
-            .arg("lsp-proxy")
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
-            .spawn()
-            .unwrap();
+        info!("lsp_command: {}", lsp_command);
+
+        let mut child = {
+            // NOTE: not sure if this is the best way to build the command
+            let mut command_iter = lsp_command.split(' ');
+            let mut command = Command::new(command_iter.next().unwrap());
+            command_iter.for_each(|arg| {
+                command.arg(arg);
+            });
+
+            command
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::inherit())
+                .spawn()
+                .unwrap()
+        };
 
         let child_stdin = child.stdin.take().unwrap();
         let child_stdout = child.stdout.take().unwrap();

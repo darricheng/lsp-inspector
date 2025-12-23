@@ -55,10 +55,11 @@ impl LspInspector {
         column![client_messages, server_messages].into()
     }
 
-    pub fn subscription(&self) -> Subscription<Message> {
-        Subscription::run(lsp_listener).map(|msg| {
-            info!("In subscription map");
-            Message::MessageReceived(msg)
-        })
+    pub fn subscription(lsp_command: String) -> impl Fn(&Self) -> Subscription<Message> {
+        move |_lsp_inspector| {
+            // Is there a better way than doing all this cloning?
+            Subscription::run_with(lsp_command.clone(), |data| lsp_listener(data.clone()))
+                .map(|msg| Message::MessageReceived(msg))
+        }
     }
 }
