@@ -56,6 +56,8 @@ impl LspInspector {
     }
 
     pub fn subscription(lsp_command: String) -> impl Fn(&Self) -> Subscription<Message> {
+        // We pass the returned fn to iced's subscription builder which requires that fn
+        // accepts &Self, but it's not used here, so we add an underscore to it.
         move |_lsp_inspector| {
             // Is there a better way than doing all this cloning?
             Subscription::run_with(lsp_command.clone(), |data| lsp_listener(data.clone()))
