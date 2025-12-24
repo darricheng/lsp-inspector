@@ -93,7 +93,7 @@ impl LspInspector {
         move |_lsp_inspector| {
             // Is there a better way than doing all this cloning?
             Subscription::run_with(lsp_command.clone(), |data| lsp_listener(data.clone()))
-                .map(|msg| Message::MessageReceived(msg))
+                .map(Message::MessageReceived)
         }
     }
 }

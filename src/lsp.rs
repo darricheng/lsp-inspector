@@ -72,10 +72,10 @@ async fn extract_message(
             message_source,
         );
 
-        if let Err(_) = match message_source {
+        if (match message_source {
             StdIoEnum::Stdin => sender.send(LspMessage::Client(message)).await,
             StdIoEnum::Stdout => sender.send(LspMessage::Server(message)).await,
-        } {
+        }).is_err() {
             error!("Receiver dropped");
             return;
         };
