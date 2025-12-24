@@ -1,7 +1,7 @@
 use crate::lsp::{LspMessage, lsp_listener};
 use iced::Length::Fill;
-use iced::widget::{Grid, Scrollable, column, container, grid, scrollable, text};
-use iced::{self, Color, Element, Subscription};
+use iced::widget::{Grid, column, scrollable, text};
+use iced::{Element, Subscription};
 use log::info;
 
 #[derive(Debug, Clone)]
