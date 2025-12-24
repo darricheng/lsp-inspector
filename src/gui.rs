@@ -1,6 +1,6 @@
 use crate::lsp::{LspMessage, lsp_listener};
 use iced::Length::Fill;
-use iced::widget::{Scrollable, column, container, grid, scrollable, text};
+use iced::widget::{Grid, Scrollable, column, container, grid, scrollable, text};
 use iced::{self, Color, Element, Subscription};
 use log::info;
 
@@ -36,19 +36,25 @@ impl LspInspector {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let client_messages: Scrollable<_> = scrollable(
+        let client_messages: Element<_> = scrollable(
             column(self.client_messages.iter().map(text).map(Element::from)).spacing(10),
         )
+        .width(Fill)
         .height(Fill)
-        .spacing(10);
+        .spacing(10)
+        .into();
         let server_messages: Element<_> = scrollable(
             column(self.server_messages.iter().map(text).map(Element::from)).spacing(10),
         )
+        .width(Fill)
         .height(Fill)
         .spacing(10)
         .into();
 
-        grid![client_messages, server_messages].into()
+        Grid::with_children([client_messages, server_messages])
+            .columns(2)
+            .height(Fill)
+            .into()
     }
 
     pub fn subscription(lsp_command: String) -> impl Fn(&Self) -> Subscription<Message> {
