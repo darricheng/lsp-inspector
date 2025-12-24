@@ -10,15 +10,13 @@ pub enum Message {
 }
 
 pub struct LspInspector {
-    client_messages: Vec<String>,
-    server_messages: Vec<String>,
+    lsp_messages: Vec<LspMessage>,
 }
 
 impl LspInspector {
     pub fn new() -> Self {
         Self {
-            client_messages: vec![String::from("Client Messages")],
-            server_messages: vec![String::from("Server Messages")],
+            lsp_messages: Vec::new(),
         }
     }
 
@@ -27,31 +25,63 @@ impl LspInspector {
         match message {
             Message::MessageReceived(message) => {
                 info!("Message received in Iced: {:?}", message);
-                match message {
-                    LspMessage::Client(c) => self.client_messages.push(c),
-                    LspMessage::Server(s) => self.server_messages.push(s),
-                }
+                self.lsp_messages.push(message)
             }
         }
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let client_messages: Element<_> = scrollable(
-            column(self.client_messages.iter().map(text).map(Element::from)).spacing(10),
+        let (client_messages, server_messages): (Vec<_>, Vec<_>) = self
+            .lsp_messages
+            .iter()
+            .partition(|msg| matches!(msg, LspMessage::Client(_)));
+
+        let client_element: Element<_> = scrollable(
+            column(
+                client_messages
+                    .iter()
+                    .map(|e| {
+                        let msg = if let LspMessage::Client(m) = e {
+                            m.to_owned()
+                        } else {
+                            String::from(
+                                "Error: shouldn't have server message in client messages vec",
+                            )
+                        };
+                        text(msg)
+                    })
+                    .map(Element::from),
+            )
+            .spacing(10),
         )
         .width(Fill)
         .height(Fill)
         .spacing(10)
         .into();
-        let server_messages: Element<_> = scrollable(
-            column(self.server_messages.iter().map(text).map(Element::from)).spacing(10),
+        let server_element: Element<_> = scrollable(
+            column(
+                server_messages
+                    .iter()
+                    .map(|e| {
+                        let msg = if let LspMessage::Server(m) = e {
+                            m.to_owned()
+                        } else {
+                            String::from(
+                                "Error: shouldn't have client message in server messages vec",
+                            )
+                        };
+                        text(msg)
+                    })
+                    .map(Element::from),
+            )
+            .spacing(10),
         )
         .width(Fill)
         .height(Fill)
         .spacing(10)
         .into();
 
-        Grid::with_children([client_messages, server_messages])
+        Grid::with_children([client_element, server_element])
             .columns(2)
             .height(Fill)
             .into()
