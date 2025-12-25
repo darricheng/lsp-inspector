@@ -11,12 +11,16 @@ pub enum Message {
 
 pub struct LspInspector {
     lsp_messages: Vec<LspMessage>,
+    shown_message: Option<String>,
+    selected_message_index: Option<usize>,
 }
 
 impl LspInspector {
     pub fn new() -> Self {
         Self {
             lsp_messages: Vec::new(),
+            shown_message: None,
+            selected_message_index: None,
         }
     }
 
