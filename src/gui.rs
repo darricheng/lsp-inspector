@@ -44,8 +44,8 @@ impl LspInspector {
                 .map(|id| self.lsp_messages.get(id).unwrap());
             let msg: Element<_> = match msg_enum {
                 Some(lsp_msg) => match lsp_msg {
-                    LspMessage::Client(m) => text(m).into(),
-                    LspMessage::Server(m) => text(m).into(),
+                    LspMessage::Client(m) => text(pretty_print_json(m)).into(),
+                    LspMessage::Server(m) => text(pretty_print_json(m)).into(),
                 },
                 None => space().into(),
             };
@@ -116,4 +116,9 @@ fn summarise_message(json_str: &str) -> String {
         id, method, res, v
     );
     res
+}
+
+fn pretty_print_json(raw_json: &str) -> String {
+    let v: Value = serde_json::from_str(raw_json).unwrap();
+    serde_json::to_string_pretty(&v).unwrap()
 }
