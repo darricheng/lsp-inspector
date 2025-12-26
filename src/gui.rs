@@ -49,7 +49,7 @@ impl LspInspector {
                 },
                 None => space().into(),
             };
-            msg
+            scrollable(msg).into()
         };
 
         let message_elements: Element<_> = scrollable(
