@@ -1,6 +1,6 @@
 use crate::lsp::{LspMessage, lsp_listener};
 use iced::Length::Fill;
-use iced::widget::{Grid, column, scrollable, text};
+use iced::widget::{Container, column, container, scrollable, text};
 use iced::{Element, Subscription};
 use log::info;
 
@@ -35,60 +35,21 @@ impl LspInspector {
     }
 
     pub fn view(&self) -> Element<'_, Message> {
-        let (client_messages, server_messages): (Vec<_>, Vec<_>) = self
-            .lsp_messages
-            .iter()
-            .partition(|msg| matches!(msg, LspMessage::Client(_)));
-
-        let client_element: Element<_> = scrollable(
-            column(
-                client_messages
-                    .iter()
-                    .map(|e| {
-                        let msg = if let LspMessage::Client(m) = e {
-                            m.to_owned()
-                        } else {
-                            String::from(
-                                "Error: shouldn't have server message in client messages vec",
-                            )
-                        };
-                        text(msg)
-                    })
-                    .map(Element::from),
-            )
-            .spacing(10),
-        )
+        let message_elements: Element<_> = scrollable(column(
+            self.lsp_messages
+                .iter()
+                .map(|msg| -> Container<'_, Message> {
+                    match msg {
+                        LspMessage::Client(m) => container(text(m).width(200)).align_left(Fill),
+                        LspMessage::Server(m) => container(text(m).width(200)).align_right(Fill),
+                    }
+                })
+                .map(Element::from),
+        ))
         .width(Fill)
-        .height(Fill)
-        .spacing(10)
-        .into();
-        let server_element: Element<_> = scrollable(
-            column(
-                server_messages
-                    .iter()
-                    .map(|e| {
-                        let msg = if let LspMessage::Server(m) = e {
-                            m.to_owned()
-                        } else {
-                            String::from(
-                                "Error: shouldn't have client message in server messages vec",
-                            )
-                        };
-                        text(msg)
-                    })
-                    .map(Element::from),
-            )
-            .spacing(10),
-        )
-        .width(Fill)
-        .height(Fill)
-        .spacing(10)
         .into();
 
-        Grid::with_children([client_element, server_element])
-            .columns(2)
-            .height(Fill)
-            .into()
+        message_elements
     }
 
     pub fn subscription(lsp_command: String) -> impl Fn(&Self) -> Subscription<Message> {
