@@ -3,6 +3,7 @@ use iced::Length::Fill;
 use iced::widget::{Container, Grid, button, column, container, scrollable, space, text};
 use iced::{Element, Subscription};
 use log::info;
+use serde_json::Value;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -58,11 +59,13 @@ impl LspInspector {
                 .map(|(i, msg)| -> Container<'_, Message> {
                     match msg {
                         LspMessage::Client(m) => container(
-                            button(text(m).width(200)).on_press(Message::SetShownMessageId(i)),
+                            button(text(summarise_message(m)).width(200))
+                                .on_press(Message::SetShownMessageId(i)),
                         )
                         .align_left(Fill),
                         LspMessage::Server(m) => container(
-                            button(text(m).width(200)).on_press(Message::SetShownMessageId(i)),
+                            button(text(summarise_message(m)).width(200))
+                                .on_press(Message::SetShownMessageId(i)),
                         )
                         .align_right(Fill),
                     }
@@ -86,5 +89,22 @@ impl LspInspector {
             Subscription::run_with(lsp_command.clone(), |data| lsp_listener(data.clone()))
                 .map(Message::MessageReceived)
         }
+    }
+}
+
+// Extract the combination of id and method.
+fn summarise_message(json_str: &str) -> String {
+    let v: Value = serde_json::from_str(json_str).unwrap();
+    let id = v["id"].as_str();
+    let method = v["method"].as_str();
+
+    // Request: id & method
+    // Response: id only
+    // Notification: method only
+    match (id, method) {
+        (Some(i), Some(m)) => format!("Request\nid: {}\nmethod: {}", i, m),
+        (Some(i), None) => format!("Response\nid: {}", i),
+        (None, Some(m)) => format!("Notification\nmethod: {}", m),
+        (None, None) => "ERROR: Unknown message type".to_owned(),
     }
 }
