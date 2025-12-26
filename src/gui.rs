@@ -95,16 +95,22 @@ impl LspInspector {
 // Extract the combination of id and method.
 fn summarise_message(json_str: &str) -> String {
     let v: Value = serde_json::from_str(json_str).unwrap();
-    let id = v["id"].as_str();
+    let id = v["id"].as_number();
     let method = v["method"].as_str();
 
     // Request: id & method
     // Response: id only
     // Notification: method only
-    match (id, method) {
+    let res = match (id, method) {
         (Some(i), Some(m)) => format!("Request\nid: {}\nmethod: {}", i, m),
         (Some(i), None) => format!("Response\nid: {}", i),
         (None, Some(m)) => format!("Notification\nmethod: {}", m),
         (None, None) => "ERROR: Unknown message type".to_owned(),
-    }
+    };
+
+    info!(
+        "id: {:?}, method: {:?}, res: {:?}, v: {:?}",
+        id, method, res, v
+    );
+    res
 }
