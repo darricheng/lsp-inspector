@@ -52,26 +52,29 @@ impl LspInspector {
             msg
         };
 
-        let message_elements: Element<_> = scrollable(column(
-            self.lsp_messages
-                .iter()
-                .enumerate()
-                .map(|(i, msg)| -> Container<'_, Message> {
-                    match msg {
-                        LspMessage::Client(m) => container(
-                            button(text(summarise_message(m)).width(200))
-                                .on_press(Message::SetShownMessageId(i)),
-                        )
-                        .align_left(Fill),
-                        LspMessage::Server(m) => container(
-                            button(text(summarise_message(m)).width(200))
-                                .on_press(Message::SetShownMessageId(i)),
-                        )
-                        .align_right(Fill),
-                    }
-                })
-                .map(Element::from),
-        ))
+        let message_elements: Element<_> = scrollable(
+            column(
+                self.lsp_messages
+                    .iter()
+                    .enumerate()
+                    .map(|(i, msg)| -> Container<'_, Message> {
+                        match msg {
+                            LspMessage::Client(m) => container(
+                                button(text(summarise_message(m)).width(200))
+                                    .on_press(Message::SetShownMessageId(i)),
+                            )
+                            .align_left(Fill),
+                            LspMessage::Server(m) => container(
+                                button(text(summarise_message(m)).width(200))
+                                    .on_press(Message::SetShownMessageId(i)),
+                            )
+                            .align_right(Fill),
+                        }
+                    })
+                    .map(Element::from),
+            )
+            .spacing(4),
+        )
         .width(Fill)
         .into();
 
