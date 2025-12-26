@@ -1,17 +1,17 @@
 use crate::lsp::{LspMessage, lsp_listener};
 use iced::Length::Fill;
-use iced::widget::{Container, column, container, scrollable, text};
+use iced::widget::{Container, Grid, button, column, container, scrollable, space, text};
 use iced::{Element, Subscription};
 use log::info;
 
 #[derive(Debug, Clone)]
 pub enum Message {
     MessageReceived(LspMessage),
+    SetShownMessageId(usize),
 }
 
 pub struct LspInspector {
     lsp_messages: Vec<LspMessage>,
-    shown_message: Option<String>,
     selected_message_index: Option<usize>,
 }
 
@@ -19,7 +19,6 @@ impl LspInspector {
     pub fn new() -> Self {
         Self {
             lsp_messages: Vec::new(),
-            shown_message: None,
             selected_message_index: None,
         }
     }
@@ -31,17 +30,41 @@ impl LspInspector {
                 info!("Message received in Iced: {:?}", message);
                 self.lsp_messages.push(message)
             }
+            Message::SetShownMessageId(id) => {
+                self.selected_message_index = Some(id);
+            }
         }
     }
 
     pub fn view(&self) -> Element<'_, Message> {
+        let shown_message: Element<_> = {
+            let msg_enum = self
+                .selected_message_index
+                .map(|id| self.lsp_messages.get(id).unwrap());
+            let msg: Element<_> = match msg_enum {
+                Some(lsp_msg) => match lsp_msg {
+                    LspMessage::Client(m) => text(m).into(),
+                    LspMessage::Server(m) => text(m).into(),
+                },
+                None => space().into(),
+            };
+            msg
+        };
+
         let message_elements: Element<_> = scrollable(column(
             self.lsp_messages
                 .iter()
-                .map(|msg| -> Container<'_, Message> {
+                .enumerate()
+                .map(|(i, msg)| -> Container<'_, Message> {
                     match msg {
-                        LspMessage::Client(m) => container(text(m).width(200)).align_left(Fill),
-                        LspMessage::Server(m) => container(text(m).width(200)).align_right(Fill),
+                        LspMessage::Client(m) => container(
+                            button(text(m).width(200)).on_press(Message::SetShownMessageId(i)),
+                        )
+                        .align_left(Fill),
+                        LspMessage::Server(m) => container(
+                            button(text(m).width(200)).on_press(Message::SetShownMessageId(i)),
+                        )
+                        .align_right(Fill),
                     }
                 })
                 .map(Element::from),
@@ -49,7 +72,10 @@ impl LspInspector {
         .width(Fill)
         .into();
 
-        message_elements
+        Grid::with_children([shown_message, message_elements])
+            .columns(2)
+            .height(Fill)
+            .into()
     }
 
     pub fn subscription(lsp_command: String) -> impl Fn(&Self) -> Subscription<Message> {
