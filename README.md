@@ -1,6 +1,34 @@
 # LSP Inspector
 
-An application that wraps the language server to capture and display communication in realtime for easier debugging of the LSP.
+An application that wraps the language server to capture and display communication in realtime for easier debugging of the [language server protocol](https://microsoft.github.io/language-server-protocol/).
+
+## Installing
+
+We do not provide pre-packaged binaries yet. You'll need to clone the repository and build it yourself. lsp-inspector is built with Rust, so you'll need a [Rust installation](https://rust-lang.org/tools/install/) to compile it. The minimum Rust version required is 1.88 (stable) or newer.
+
+## Usage
+
+Pass the command for starting the language server as a string argument to lsp-inspector.
+
+### Examples
+
+```
+# Biome
+lsp-inspector "biome lsp-proxy"
+
+# TypeScript
+lsp-inspector "typescript-language-server --stdio"
+
+# TypeScript native
+lsp-inspector "tsgo --lsp --stdio"
+
+# Rust
+lsp-inspector "rust-analyzer"
+```
+
+### Limitations
+
+lsp-inspector currently only supports viewing LSP communication via stdio.
 
 ## Origin
 
