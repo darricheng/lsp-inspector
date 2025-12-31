@@ -1,7 +1,7 @@
 use crate::lsp::{LspMessage, lsp_listener};
 use iced::Length::Fill;
-use iced::widget::{Container, Grid, button, column, container, scrollable, space, text};
-use iced::{Element, Subscription};
+use iced::widget::{Container, Grid, button, column, container, scrollable, text};
+use iced::{Element, Subscription, Task, clipboard};
 use log::info;
 use serde_json::Value;
 
@@ -9,6 +9,7 @@ use serde_json::Value;
 pub enum Message {
     MessageReceived(LspMessage),
     SetShownMessageId(usize),
+    CopyToClipboard(String),
 }
 
 pub struct LspInspector {
@@ -24,16 +25,19 @@ impl LspInspector {
         }
     }
 
-    pub fn update(&mut self, message: Message) {
+    pub fn update(&mut self, message: Message) -> Task<Message> {
         info!("Update received: {:?}", message);
         match message {
             Message::MessageReceived(message) => {
                 info!("Message received in Iced: {:?}", message);
-                self.lsp_messages.push(message)
+                self.lsp_messages.push(message);
+                Task::none()
             }
             Message::SetShownMessageId(id) => {
                 self.selected_message_index = Some(id);
+                Task::none()
             }
+            Message::CopyToClipboard(str) => clipboard::write(str),
         }
     }
 
@@ -42,14 +46,20 @@ impl LspInspector {
             let msg_enum = self
                 .selected_message_index
                 .map(|id| self.lsp_messages.get(id).unwrap());
-            let msg: Element<_> = match msg_enum {
+            let prettified_json: String = match msg_enum {
                 Some(lsp_msg) => match lsp_msg {
-                    LspMessage::Client(m) => text(pretty_print_json(m)).into(),
-                    LspMessage::Server(m) => text(pretty_print_json(m)).into(),
+                    LspMessage::Client(m) => pretty_print_json(m),
+                    LspMessage::Server(m) => pretty_print_json(m),
                 },
-                None => space().into(),
+                None => String::new(),
             };
-            scrollable(msg).into()
+
+            let json_view: Element<_> = scrollable(text(prettified_json.clone())).into();
+            let copy_button: Element<_> = button("Copy")
+                .on_press(Message::CopyToClipboard(prettified_json))
+                .into();
+
+            container(column![copy_button, json_view]).into()
         };
 
         let message_elements: Element<_> = scrollable(
